@@ -21,7 +21,7 @@ symbols = [
     "DATAUSDT",
     "HIVEUSDT",
     "ZRXUSDT",
-    "ICSUSDT",
+    "ICXUSDT",
     "ATOMUSDT",
     "VETUSDT",
     "EOSUSDT",

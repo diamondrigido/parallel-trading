@@ -1,6 +1,7 @@
 import os.path
 import logging
 import logging.config
+import multiprocessing as mp
 
 from binance import Client
 
@@ -103,53 +104,56 @@ class TradeBotBase:
         logger.info("DATA WAS GOT FROM CLIENT")
         return klines
 
+    def trading(self, instance):
+        logger.info(f"INSTANCE WAS CREATED. Instance = {instance}")
+        df = self.get_dataset(instance.symbol)
+        algo = self.algorithm_class(instance.buying_price, instance.status)
+        logger.info("ALGORITHM IS CREATED")
+        algo.df = df
+        logger.info("DF PUT IN ALGORITHM")
+        method, value = algo.get_value()
+        logger.info(f"Method = {method}  --- Value = {str(value)}")
+        if method == "BUY":
+            symbol_info = self.client_class.get_symbol_info(instance.symbol)
+            quantity = get_quantity(instance.fiat_balance, value, symbol_info)
+            param = {
+                "symbol": instance.symbol,
+                "side": method,
+                "type": "LIMIT",
+                "timeInForce": "GTC",
+                "quantity": quantity,
+                "price": str(value)
+            }
+            instance.quantity = quantity
+            instance.status = method
+            instance.buying_price = value
+            # self.client_class.get_order(**param)
+            logger.info(f"BUY {instance.symbol} --- quantity = {quantity} --- value = {value}")
+        elif method == "SELL":
+            param = {
+                "symbol": instance.symbol,
+                "side": method,
+                "type": "LIMIT",
+                "timeInForce": "GTC",
+                "quantity": instance.quantity - 1,
+                "price": str(value)
+            }
+            # self.client_class.get_order(**param)
+            instance.status = method
+            instance.buying_price = value
+            logger.info(f"SELL {instance.symbol} --- quantity = {instance.quantity} --- value = {value}")
+        else:
+            logger.info("NO BUY NO SELL")
+            pass
+
+        # self.db_session.commit_session()
+
+        logger.info("Commit session")
+
     def get_trade(self):
         self.get_query()
-        for instance in self.query:
-            logger.info(f"INSTANCE WAS CREATED. Insance = {instance}")
-            df = self.get_dataset(instance.symbol)
-            algo = self.algorithm_class(instance.buying_price, instance.status)
-            logger.info("ALGORITHM IS CREATED")
-            algo.df = df
-            logger.info("DF PUT IN ALGORITHM")
-            method, value = algo.get_value()
-            logger.info(f"Method = {method}  --- Value = {str(value)}")
-            if method == "BUY":
-                symbol_info = self.client_class.get_symbol_info(instance.symbol)
-                quantity = get_quantity(instance.fiat_balance, value, symbol_info)
-                param = {
-                    "symbol": instance.symbol,
-                    "side": method,
-                    "type": "LIMIT",
-                    "timeInForce": "GTC",
-                    "quantity": quantity,
-                    "price": str(value)
-                }
-                instance.quantity = quantity
-                instance.status = method
-                instance.buying_price = value
-                # self.client_class.get_order(**param)
-                logger.info(f"BUY {instance.symbol} --- quantity = {quantity} --- value = {value}")
-            elif method == "SELL":
-                param = {
-                    "symbol": instance.symbol,
-                    "side": method,
-                    "type": "LIMIT",
-                    "timeInForce": "GTC",
-                    "quantity": instance.quantity - 1,
-                    "price": str(value)
-                }
-                # self.client_class.get_order(**param)
-                instance.status = method
-                instance.buying_price = value
-                logger.info(f"SELL {instance.symbol} --- quantity = {instance.quantity} --- value = {value}")
-            else:
-                logger.info("NO BUY NO SELL")
-                pass
-
-            # self.db_session.commit_session()
-
-            logger.info("Commit session")
+        with mp.Pool(4) as pool:
+            pool.map(self.trading, self.query)
 
         # self.db_session.close_session()
 

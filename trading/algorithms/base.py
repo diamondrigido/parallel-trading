@@ -13,7 +13,6 @@ class BaseAlgorithm:
 
     def create_values(self):
         dct_values = {}
-        print(self.df)
         self.df = self.df.dropna()
         for key, value in self.columns_use.items():
             if key == "price_for_if":
@@ -51,8 +50,6 @@ class BaseAlgorithm:
 
 class SimpleAlgorithm(BaseAlgorithm):
     def sell_method(self):
-        print(self.start_price)
-        print(self.dct_values["price_for_if"])
         return True if self.dct_values["price_for_if"] > 1.1 * self.start_price else False
 
     def buy_method(self):
