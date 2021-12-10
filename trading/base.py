@@ -12,8 +12,8 @@ from .utils import get_quantity
 from .data import symbols_status
 
 
-# logging.config.fileConfig(os.path.join(BASE_DIR, "settings/logging.conf"))
-logger = logging.getLogger("trading_base")
+logging.config.dictConfig(LOGGING_CONFIG)
+logger = logging.getLogger("root")
 
 
 class SMA24(SMAToolIndicator):
@@ -150,9 +150,9 @@ class TradeBotBase:
 
         logger.info("Commit session")
 
-    def get_trade(self):
+    def get_trade(self, num_proc=4):
         self.get_query()
-        with mp.Pool(4) as pool:
+        with mp.Pool(num_proc) as pool:
             pool.map(self.trading, self.query)
 
         # self.db_session.close_session()
